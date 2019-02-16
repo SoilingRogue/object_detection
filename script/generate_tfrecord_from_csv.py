@@ -130,7 +130,7 @@ def prepare_example_2(image_path, anno):
     encoded_png = fid.read()
   encoded_png_io = io.BytesIO(encoded_png)
   image0 = pil.open(encoded_png_io)
-  image = image0.transpose(Image.FLIP_LEFT_RIGHT)
+  image = image0.transpose(pil.FLIP_LEFT_RIGHT)
 
   key = hashlib.sha256(encoded_png).hexdigest()
   width,height = image.size
@@ -142,9 +142,9 @@ def prepare_example_2(image_path, anno):
   label = []
   for j in range(len(anno)):
       anno_j = anno[j].split(' ')
-      xmin_norm.append(float(width-1-anno_j[3]))
+      xmin_norm.append(width - 1 - float(anno_j[3]))
       ymin_norm.append(float(anno_j[2]))
-      xmax_norm.append(float(width-1-anno_j[1]))
+      xmax_norm.append(width - 1 - float(anno_j[1]))
       ymax_norm.append(float(anno_j[4]))
       label.append(anno_j[0])
 
