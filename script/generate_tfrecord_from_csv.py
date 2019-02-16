@@ -40,11 +40,11 @@ def convert_csv_to_tfrecords(image_dir, output_path, csv_file, validation_set_si
   data = data.fillna(0) 
   
   np.random.seed(42)
+  shuffled_index = np.random.permutation(len(data));
   img_num = 0
   for i in range(len(data)):
-    shuffled_index = np.random.permutation(len(data));
-    img_id = data['fileId'][shuffled_index]
-    result = data['labelString'][shuffled_index]
+    img_id = data['fileId'][shuffled_index[i]]
+    result = data['labelString'][shuffled_index[i]]
     tmp = result.split('\n')
     img_path = os.path.join(image_dir+img_id)
     print("Image Name: " + img_id)
@@ -64,6 +64,9 @@ def convert_csv_to_tfrecords(image_dir, output_path, csv_file, validation_set_si
       val_count += 1
     else:
       train_writer.write(example.SerializeToString())
+      train_count += 1
+      example2 = prepare_example_2(img_path, tmp)
+      train_writer.write(example2.SerializeToString())
       train_count += 1
 
   train_writer.close()
@@ -119,7 +122,58 @@ def prepare_example_1(image_path, anno):
 
   return example
 
+def prepare_example_2(image_path, anno):
+  image_id0 = os.path.basename(image_path)
+  ids = os.path.splitext(image_id0)
+  image_id = ids[0] + "_stanley_flip" + ids[1]
+  with tf.gfile.GFile(image_path, 'rb') as fid:
+    encoded_png = fid.read()
+  encoded_png_io = io.BytesIO(encoded_png)
+  image0 = pil.open(encoded_png_io)
+  image = image0.transpose(Image.FLIP_LEFT_RIGHT)
 
+  key = hashlib.sha256(encoded_png).hexdigest()
+  width,height = image.size
+  #import pdb; pdb.set_trace()
+  xmin_norm = []
+  ymin_norm = []
+  xmax_norm = []
+  ymax_norm = []
+  label = []
+  for j in range(len(anno)):
+      anno_j = anno[j].split(' ')
+      xmin_norm.append(float(width-1-anno_j[3]))
+      ymin_norm.append(float(anno_j[2]))
+      xmax_norm.append(float(width-1-anno_j[1]))
+      ymax_norm.append(float(anno_j[4]))
+      label.append(anno_j[0])
+
+
+  # resize image
+  #new_width,new_height = tuple(map(int,FLAGS.resize.split(',')))
+  #image = image.resize([new_width,new_height],pil.LANCZOS)
+
+
+  img_byte_arr = io.BytesIO()
+  image.save(img_byte_arr,format='PNG',quality=100)
+  encoded_png = img_byte_arr.getvalue()
+
+  example = tf.train.Example(features=tf.train.Features(feature={
+      'image/height': dataset_util.int64_feature(height),
+      'image/width': dataset_util.int64_feature(width),
+      'image/filename': dataset_util.bytes_feature(image_id.encode('utf8')),
+      'image/source_id': dataset_util.bytes_feature(image_id.encode('utf8')),
+      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
+      'image/encoded': dataset_util.bytes_feature(encoded_png),
+      'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
+      'image/object/bbox/xmin': dataset_util.float_list_feature(xmin_norm),
+      'image/object/bbox/xmax': dataset_util.float_list_feature(xmax_norm),
+      'image/object/bbox/ymin': dataset_util.float_list_feature(ymin_norm),
+      'image/object/bbox/ymax': dataset_util.float_list_feature(ymax_norm),
+      'image/object/class/text': dataset_util.bytes_list_feature(x.encode('utf8') for x in label),
+  }))
+
+  return example
 
 def prepare_example(image_path, label, rect):
   image_id = os.path.basename(image_path)
