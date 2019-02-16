@@ -38,11 +38,13 @@ def convert_csv_to_tfrecords(image_dir, output_path, csv_file, validation_set_si
                                            output_path)
   data = pd.read_csv(csv_file)
   data = data.fillna(0) 
-
+  
+  np.random.seed(42)
   img_num = 0
   for i in range(len(data)):
-    img_id = data['fileId'][i]
-    result = data['labelString'][i]
+    shuffled_index = np.random.permutation(len(data));
+    img_id = data['fileId'][shuffled_index]
+    result = data['labelString'][shuffled_index]
     tmp = result.split('\n')
     img_path = os.path.join(image_dir+img_id)
     print("Image Name: " + img_id)
