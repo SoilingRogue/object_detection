@@ -38,13 +38,15 @@ def convert_csv_to_tfrecords(image_dir, output_path, csv_file, validation_set_si
                                            output_path)
   data = pd.read_csv(csv_file)
   data = data.fillna(0) 
-  
+
+  # shuffle
   np.random.seed(42)
-  shuffled_index = np.random.permutation(len(data));
+  shuffled_indices = np.random.permutation(len(data))
+
   img_num = 0
   for i in range(len(data)):
-    img_id = data['fileId'][shuffled_index[i]]
-    result = data['labelString'][shuffled_index[i]]
+    img_id = data['fileId'][shuffled_indices[i]]
+    result = data['labelString'][shuffled_indices[i]]
     tmp = result.split('\n')
     img_path = os.path.join(image_dir+img_id)
     print("Image Name: " + img_id)
@@ -89,10 +91,10 @@ def prepare_example_1(image_path, anno):
   label = []
   for j in range(len(anno)):
       anno_j = anno[j].split(' ')
-      xmin_norm.append(float(anno_j[1]))
-      ymin_norm.append(float(anno_j[2]))
-      xmax_norm.append(float(anno_j[3]))
-      ymax_norm.append(float(anno_j[4]))
+      xmin_norm.append(float(anno_j[1]) / width)
+      ymin_norm.append(float(anno_j[2]) / height)
+      xmax_norm.append(float(anno_j[3]) / width)
+      ymax_norm.append(float(anno_j[4]) / height)
       label.append(anno_j[0])
 
 
@@ -125,14 +127,14 @@ def prepare_example_1(image_path, anno):
 def prepare_example_2(image_path, anno):
   image_id0 = os.path.basename(image_path)
   ids = os.path.splitext(image_id0)
-  image_id = ids[0] + "_stanley_flip" + ids[1]
+  image_id = ids[0] + "_mirrflip" + ids[1]
   with tf.gfile.GFile(image_path, 'rb') as fid:
     encoded_png = fid.read()
   encoded_png_io = io.BytesIO(encoded_png)
   image0 = pil.open(encoded_png_io)
-  image = image0.transpose(Image.FLIP_LEFT_RIGHT)
+  image = image0.transpose(pil.FLIP_LEFT_RIGHT)
 
-  key = hashlib.sha256(encoded_png).hexdigest()
+  # key = hashlib.sha256(encoded_png).hexdigest()
   width,height = image.size
   #import pdb; pdb.set_trace()
   xmin_norm = []
@@ -142,10 +144,10 @@ def prepare_example_2(image_path, anno):
   label = []
   for j in range(len(anno)):
       anno_j = anno[j].split(' ')
-      xmin_norm.append(float(width-1-anno_j[3]))
-      ymin_norm.append(float(anno_j[2]))
-      xmax_norm.append(float(width-1-anno_j[1]))
-      ymax_norm.append(float(anno_j[4]))
+      xmin_norm.append((width - 1 - float(anno_j[3])) / width)
+      ymin_norm.append(float(anno_j[2]) / height)
+      xmax_norm.append((width - 1 - float(anno_j[1])) / width)
+      ymax_norm.append(float(anno_j[4]) / height)
       label.append(anno_j[0])
 
 
@@ -153,10 +155,10 @@ def prepare_example_2(image_path, anno):
   #new_width,new_height = tuple(map(int,FLAGS.resize.split(',')))
   #image = image.resize([new_width,new_height],pil.LANCZOS)
 
-
   img_byte_arr = io.BytesIO()
   image.save(img_byte_arr,format='PNG',quality=100)
   encoded_png = img_byte_arr.getvalue()
+  key = hashlib.sha256(encoded_png).hexdigest()
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': dataset_util.int64_feature(height),
@@ -174,6 +176,8 @@ def prepare_example_2(image_path, anno):
   }))
 
   return example
+
+
 
 def prepare_example(image_path, label, rect):
   image_id = os.path.basename(image_path)
