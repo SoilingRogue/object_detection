@@ -177,55 +177,53 @@ def prepare_example_2(image_path, anno):
 
   return example
 
-
-
 def prepare_example(image_path, label, rect):
-  image_id = os.path.basename(image_path)
-  with tf.gfile.GFile(image_path, 'rb') as fid:
-    encoded_png = fid.read()
-  encoded_png_io = io.BytesIO(encoded_png)
-  image = pil.open(encoded_png_io)
-  
-  key = hashlib.sha256(encoded_png).hexdigest()
-  width,height = image.size
-  import pdb; pdb.set_trace()
-  xmin_norm = rect[0] 
-  xmax_norm = rect[2] 
-  ymax_norm = rect[3]
-  
-  # resize image
-  #new_width,new_height = tuple(map(int,FLAGS.resize.split(',')))
-  #image = image.resize([new_width,new_height],pil.LANCZOS)
+	image_id = os.path.basename(image_path)
+	with tf.gfile.GFile(image_path, 'rb') as fid:
+	encoded_png = fid.read()
+	encoded_png_io = io.BytesIO(encoded_png)
+	image = pil.open(encoded_png_io)
+
+	key = hashlib.sha256(encoded_png).hexdigest()
+	width,height = image.size
+	import pdb; pdb.set_trace()
+	xmin_norm = rect[0] 
+	xmax_norm = rect[2] 
+	ymax_norm = rect[3]
+
+# resize image
+#new_width,new_height = tuple(map(int,FLAGS.resize.split(',')))
+#image = image.resize([new_width,new_height],pil.LANCZOS)
 
 
-  img_byte_arr = io.BytesIO()
-  image.save(img_byte_arr,format='PNG',quality=100)
-  encoded_png = img_byte_arr.getvalue()
+	img_byte_arr = io.BytesIO()
+	image.save(img_byte_arr,format='PNG',quality=100)
+	encoded_png = img_byte_arr.getvalue()
 
-  example = tf.train.Example(features=tf.train.Features(feature={
-      'image/height': dataset_util.int64_feature(height),
-      'image/width': dataset_util.int64_feature(width),
-      'image/filename': dataset_util.bytes_feature(image_id.encode('utf8')),
-      'image/source_id': dataset_util.bytes_feature(image_id.encode('utf8')),
-      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
-      'image/encoded': dataset_util.bytes_feature(encoded_png),
-      'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
-      'image/object/bbox/xmin': dataset_util.float_list_feature(xmin_norm),
-      'image/object/bbox/xmax': dataset_util.float_list_feature(xmax_norm),
-      'image/object/bbox/ymin': dataset_util.float_list_feature(ymin_norm),
-      'image/object/bbox/ymax': dataset_util.float_list_feature(ymax_norm),
-      'image/object/class/text': dataset_util.bytes_list_feature(label),
-  }))
+	example = tf.train.Example(features=tf.train.Features(feature={
+				'image/height': dataset_util.int64_feature(height),
+				'image/width': dataset_util.int64_feature(width),
+				'image/filename': dataset_util.bytes_feature(image_id.encode('utf8')),
+				'image/source_id': dataset_util.bytes_feature(image_id.encode('utf8')),
+				'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
+				'image/encoded': dataset_util.bytes_feature(encoded_png),
+				'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
+				'image/object/bbox/xmin': dataset_util.float_list_feature(xmin_norm),
+				'image/object/bbox/xmax': dataset_util.float_list_feature(xmax_norm),
+				'image/object/bbox/ymin': dataset_util.float_list_feature(ymin_norm),
+				'image/object/bbox/ymax': dataset_util.float_list_feature(ymax_norm),
+				'image/object/class/text': dataset_util.bytes_list_feature(label),
+				}))
 
-  return example
+	return example
 
 
 def main(_):
-  convert_csv_to_tfrecords(
-      image_dir=FLAGS.image_dir,
-      output_path=FLAGS.output_path,
-      csv_file=FLAGS.csv_file,
-      validation_set_size=FLAGS.validation_set_size)
+	convert_csv_to_tfrecords(
+			image_dir=FLAGS.image_dir,
+			output_path=FLAGS.output_path,
+			csv_file=FLAGS.csv_file,
+			validation_set_size=FLAGS.validation_set_size)
 
-if __name__ == '__main__':
-  tf.app.run()
+	if __name__ == '__main__':
+		tf.app.run()
